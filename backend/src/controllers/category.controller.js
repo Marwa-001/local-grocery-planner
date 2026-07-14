@@ -32,4 +32,11 @@ async function updateCategory(req, res) {
   res.json(result.rows[0]);
 }
 
-module.exports = { getCategories, createCategory, updateCategory };
+async function deleteCategory(req, res) {
+  const { id } = req.params;
+  const result = await pool.query('DELETE FROM categories WHERE id = $1 RETURNING id', [id]);
+  if (!result.rows.length) return res.status(404).json({ message: 'Category not found' });
+  res.json({ message: 'Deleted' });
+}
+
+module.exports = { getCategories, createCategory, updateCategory, deleteCategory };

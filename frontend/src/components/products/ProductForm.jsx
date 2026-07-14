@@ -7,16 +7,19 @@ export default function ProductForm({ productToEdit, clearEdit }) {
   const { addProduct, categories, updateProduct } = useShoppingStore();
   const [error, setError] = useState("");
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
 
+    const rawCategoryId = formData.get("categoryId");
+
     const raw = {
-      id: productToEdit?.id || crypto.randomUUID(),
-      userId: "local-user",
+      id: productToEdit?.id,
       name: formData.get("name")?.toString() || "",
       price: formData.get("price") ? parseFloat(formData.get("price")) : 0,
-      categoryId: formData.get("categoryId"),
+      // backend's zod schema requires categoryId as a number (or omitted),
+      // but a <select> always gives back a string, so coerce it here.
+      categoryId: rawCategoryId ? Number(rawCategoryId) : null,
       isFavourite: false,
     };
 
@@ -28,12 +31,16 @@ export default function ProductForm({ productToEdit, clearEdit }) {
     }
 
     if (productToEdit) {
-      updateProduct(result.data);
+      const res = await updateProduct(result.data);
+      if (!res.success) {
+        setError(res.message || "Could not update product");
+        return;
+      }
       clearEdit();
     } else {
-      const success = addProduct(raw);
-      if (!success) {
-        setError("Product already exists in catalog!");
+      const res = await addProduct(raw);
+      if (!res.success) {
+        setError(res.message || "Product already exists in catalog!");
         return;
       }
     }
@@ -104,8 +111,8 @@ export default function ProductForm({ productToEdit, clearEdit }) {
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="w-full sm:flex-[2] bg-slate-900 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-xl shadow-slate-200 active:scale-[0.98] flex items-center justify-center gap-2"
         >
           <span>{productToEdit ? "Update Item" : "Save to Catalog"}</span>

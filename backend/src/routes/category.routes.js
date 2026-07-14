@@ -9,5 +9,5 @@ const ctrl = require('../controllers/category.controller');
 router.get('/categories', ctrl.getCategories);
 router.post('/categories/create', authenticate, isAdmin, validate(createCategorySchema), ctrl.createCategory);
 router.patch('/categories/:id', authenticate, isAdmin, validate(updateCategorySchema), ctrl.updateCategory);
-
+router.delete('/categories/:id', authenticate, isAdmin, ctrl.deleteCategory);
 module.exports = router;
