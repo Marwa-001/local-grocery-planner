@@ -8,7 +8,7 @@ export default function RootLayout({ children }) {
       <body>
         <AuthProvider>
           <Navbar />
-          <main className="max-w-4xl mx-auto p-4">
+          <main className=" mx-auto p-4">
             {children}
           </main>
         </AuthProvider>

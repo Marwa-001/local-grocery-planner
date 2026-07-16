@@ -6,7 +6,7 @@ import ListModal from "@/components/lists/ListModal";
 
 export default function ListsPage() {
   const router = useRouter();
-  const { user, lists, addList, fetchLists, listsLoading } = useShoppingStore();
+  const { user, lists, addList, fetchLists, listsLoading, fetchFavourites, fetchProducts } = useShoppingStore();
   const [selectedListId, setSelectedListId] = useState(null);
   const [error, setError] = useState("");
 
@@ -18,6 +18,8 @@ export default function ListsPage() {
       }, 300);
       return () => clearTimeout(t);
     }
+    fetchProducts()
+    fetchFavourites()
     fetchLists();
   }, [user, fetchLists, router]);
 
@@ -34,6 +36,12 @@ export default function ListsPage() {
       setError(err.message);
     }
   };
+
+  // fetch products before loading lists
+
+  // useEffect(()=>{
+    
+  // })
 
   return (
     <div className="min-h-screen bg-[#FBFBFB] text-slate-900 font-sans antialiased pb-20">

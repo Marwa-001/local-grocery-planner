@@ -23,6 +23,8 @@ export default function Navbar() {
     router.push("/login");
   };
 
+  console.log(user)
+
   return (
 <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
   <div className="max-w-xl mx-auto px-4 sm:px-6"> {/* Added responsive padding */}
@@ -37,7 +39,7 @@ export default function Navbar() {
         </span>
       </Link>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex gap-1 p-1 bg-slate-100/50 rounded-xl sm:rounded-2xl">
           <Link href="/lists" className={navLinkStyle("/lists")}>
             Lists
@@ -49,12 +51,14 @@ export default function Navbar() {
         </div>
 
         {user ? (
+          <>
+          <span className="text-sm font-bold text-slate-900">{user.name}</span>
           <button
             onClick={handleLogout}
             className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
           >
             Log Out
-          </button>
+          </button></>
         ) : (
           <Link
             href="/login"
