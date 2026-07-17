@@ -3,10 +3,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useShoppingStore } from "@/store/useShoppingStore";
 import ProductForm from "@/components/products/ProductForm";
-import { fetchCategories, addCategory, deleteCategory, updateCategory } from "../queries/CategoriesQuery";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { id } from "zod/locales";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { fetchCategories, addCategory, deleteCategory, updateCategory } from "../queries/CategoriesQuery";
 import { fetchProducts, deleteProduct } from "../queries/ProductsQuery";
+import { fetchFavourites, toggleFavourite } from "../queries/FavouritesQuery";
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -21,9 +22,9 @@ export default function ProductsPage() {
     // products,
     // fetchProducts,
     // deleteProduct,
-    toggleFavourite,
-    favourites,
-    fetchFavourites,
+    // toggleFavourite,
+    // favourites,
+    // fetchFavourites,
   } = useShoppingStore();
 
   const [editingProduct, setEditingProduct] = useState(null);
@@ -41,8 +42,8 @@ export default function ProductsPage() {
     }
     // fetchCategories();
     // fetchProducts();
-    fetchFavourites();
-  }, [user, fetchFavourites, router]);
+    // fetchFavourites();
+  }, [user, router]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['categories'],
@@ -53,6 +54,24 @@ export default function ProductsPage() {
   queryKey: ['products'],
   queryFn: fetchProducts,
 });
+
+const {data: favouritesData=[], isLoading:isLoadingFavourites, isError: isErrorFavourites} = useQuery({
+  queryKey: ['favourites'],
+  queryFn: fetchFavourites
+})
+
+const toggleFavouriteMutation = useMutation({
+  mutationFn: ({productId, isFavourite})=> toggleFavourite(productId, isFavourite),
+  onSuccess:()=>{
+    queryClient.invalidateQueries({queryKey:['favourites']})
+    
+    queryClient.invalidateQueries({queryKey:['products']})
+  }
+})
+
+const handleToggleFavourite = (productId, isFavourite) => {
+  toggleFavouriteMutation.mutate({productId, isFavourite});
+};
 
   const addCategoryMutation = useMutation({
     mutationFn: (id) => addCategory(id),
@@ -69,7 +88,7 @@ export default function ProductsPage() {
   const deleteCategoryMutation = useMutation({
     mutationFn: (id)=> deleteCategory(id),
     onSuccess: ()=>{
-      queryClient.invalidateQueries({queryKey: ['categories']})
+      queryClient.invalidateQueries({queryKey: ['categories', 'products']})
     }
   })
 
@@ -123,10 +142,10 @@ export default function ProductsPage() {
     deleteProductMutation.mutate(id)
   }
 
-  if (isLoading || isLoadingProducts) return <div>Loading...</div>;
+  if (isLoading || isLoadingProducts || isLoadingFavourites) return <div>Loading...</div>;
 
   // Handle error state
-  if (isError || isErrorProducts) return <div>Loading failed.</div>;
+  if (isError || isErrorProducts || isErrorFavourites) return <div>Loading failed.</div>;
   
   return (
     <div className="min-h-screen bg-[#FBFBFB] text-slate-900 font-sans antialiased pb-20">
@@ -227,11 +246,11 @@ export default function ProductsPage() {
                 {/* Items List for this category */}
                 <div className="grid gap-3">
                   {catItems?.map((p) => {
-                    const isFavourite = favourites.some(f => f.productId === p.id);
+                    const isFavourite = favouritesData.some(f => f.productId === p.id);
                     return (
                       <div key={p.id} className="group/item flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-100 transition-all hover:shadow-lg hover:shadow-indigo-500/5">
                         <div className="flex items-center gap-3 min-w-0">
-                          <button onClick={() => toggleFavourite(user?.id, p.id)} className={`text-xl transition-all ${isFavourite ? "text-amber-400 scale-110" : "text-slate-200 hover:text-slate-300"}`}>
+                          <button onClick={() => handleToggleFavourite( p.id, isFavourite)} className={`text-xl transition-all ${isFavourite ? "text-amber-400 scale-110" : "text-slate-200 hover:text-slate-300"}`}>
                             {isFavourite ? "★" : "☆"}
                           </button>
                           <div className="truncate">

@@ -12,5 +12,5 @@ export const useShoppingStore = create((...a) => ({
   // ...createCategoriesSlice(...a),
   // ...createProductsSlice(...a),
   ...createListsSlice(...a),
-  ...createFavouritesSlice(...a),
+  // ...createFavouritesSlice(...a),
 }));
