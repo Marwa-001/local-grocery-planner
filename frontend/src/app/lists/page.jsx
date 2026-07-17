@@ -3,12 +3,27 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useShoppingStore } from "@/store/useShoppingStore";
 import ListModal from "@/components/lists/ListModal";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { fetchProducts } from "../queries/ProductsQuery";
+import { fetchFavourites } from "../queries/FavouritesQuery";
 
 export default function ListsPage() {
   const router = useRouter();
-  const { user, lists, addList, fetchLists, listsLoading, fetchFavourites, fetchProducts } = useShoppingStore();
+  const { user, lists, addList, fetchLists, listsLoading } = useShoppingStore();
   const [selectedListId, setSelectedListId] = useState(null);
   const [error, setError] = useState("");
+
+  const queryClient = useQueryClient()
+
+  const {data: productsData, isLoading: isLoadingProducts, isError: isErrorProducts} = useQuery({
+    queryKey:['products'],
+    queryFn: fetchProducts
+  })
+
+  const {data: favouritesData=[]}=useQuery({
+    queryKey:['favourites'],
+    queryFn:fetchFavourites
+  })
 
   useEffect(() => {
     if (user === null) {
@@ -18,8 +33,8 @@ export default function ListsPage() {
       }, 300);
       return () => clearTimeout(t);
     }
-    fetchProducts()
-    fetchFavourites()
+    // fetchProducts()
+    // fetchFavourites()
     fetchLists();
   }, [user, fetchLists, router]);
 

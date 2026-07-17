@@ -2,20 +2,34 @@
 import { useEffect, useState } from "react";
 import { useShoppingStore } from "@/store/useShoppingStore";
 import { getFullListItem, calculateListTotal } from "@/lib/utils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchProducts } from "@/app/queries/ProductsQuery";
+import { fetchFavourites } from "@/app/queries/FavouritesQuery";
 
 export default function ListModal({ listId, onClose }) {
   const {
     lists,
-    products,
+    // products,
     fetchListItems,
     deleteListItem,
     togglePurchaseStatus,
     updateListItemQuantity,
     addProductToList,
-    favourites,
+    // favourites,
   } = useShoppingStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [itemsLoading, setItemsLoading] = useState(true);
+  const queryClient = useQueryClient()
+
+  const {data: productsData = [], isLoading: isLoadingProducts, isError: isErrorProducts} = useQuery({
+    queryKey:['products'],
+    queryFn: fetchProducts
+  })
+
+  const {data: favouritesData=[]} = useQuery({
+    queryKey: ['favourites'],
+    queryFn: fetchFavourites
+  })
 
   useEffect(() => {
     let active = true;
@@ -32,14 +46,14 @@ export default function ListModal({ listId, onClose }) {
   if (!list) return null;
 
   const filteredItems = list.items.filter((item) => {
-    const fullItem = getFullListItem(item, products);
+    const fullItem = getFullListItem(item, productsData);
     return fullItem.name.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  const totalCost = calculateListTotal(list.items.map(item => getFullListItem(item, products)));
+  const totalCost = calculateListTotal(list.items.map(item => getFullListItem(item, productsData)));
 
-  const favouriteProducts = products.filter((p) =>
-    favourites.some((f) => f.productId === p.id)
+  const favouriteProducts = productsData?.filter((p) =>
+    favouritesData?.some((f) => f.productId === p.id)
   );
 
   return (
@@ -81,24 +95,24 @@ export default function ListModal({ listId, onClose }) {
           </div>
           {/* add items using dropdown containg all the products */}
           <div className="mb-4">
-            {products.length === 0 && (
+            {productsData?.length === 0 && (
               <div className="text-center py-10 border-2 border-dashed border-slate-100 rounded-[2rem]">
                 <p className="text-slate-300 font-medium italic">No products available</p>
                 </div>
                 )
               }
-              {products.length > 0 && (
+              {productsData?.length > 0 && (
                 <div className="grid gap-3">
                   <select className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" onChange={(e) => {
                     const selectedProductId = e.target.value;
-                    const selectedProduct = products.find((prod) => String(prod.id) === selectedProductId);
+                    const selectedProduct = productsData?.find((prod) => String(prod.id) === selectedProductId);
                     if (selectedProduct) {
                       addProductToList(listId, selectedProduct);
                     }
                     e.target.value = "";
                   }}>
                     <option value="">Select a product to add...</option>
-                  {products.map((prod) => (
+                  {productsData?.map((prod) => (
                     <option key={prod.id} value={prod.id}>
                       {prod.name} - ${prod.price.toFixed(2)}
                     </option>
@@ -137,7 +151,7 @@ export default function ListModal({ listId, onClose }) {
               <p className="text-slate-300 text-xs italic ml-1 font-medium">Loading items...</p>
             )}
             {!itemsLoading && filteredItems.map((item) => {
-              const fullItem = getFullListItem(item, products);
+              const fullItem = getFullListItem(item, productsData);
               const isPurchased = item.isPurchased;
 
               return (
