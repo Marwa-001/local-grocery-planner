@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { createCategoriesSlice } from "./categoriesSlice";
-import { createProductsSlice } from "./productsSlice";
+// import { createCategoriesSlice } from "./categoriesSlice";
+// import { createProductsSlice } from "./productsSlice";
 import { createListsSlice } from "./listsSlice";
 import { createFavouritesSlice } from "./favouritesSlice";
 import { createAuthSlice } from "./authSlice";
@@ -9,8 +9,8 @@ import { createAuthSlice } from "./authSlice";
 // localStorage (only the JWT itself is kept there, by lib/api.js / authSlice).
 export const useShoppingStore = create((...a) => ({
   ...createAuthSlice(...a),
-  ...createCategoriesSlice(...a),
-  ...createProductsSlice(...a),
+  // ...createCategoriesSlice(...a),
+  // ...createProductsSlice(...a),
   ...createListsSlice(...a),
   ...createFavouritesSlice(...a),
 }));

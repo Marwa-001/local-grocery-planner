@@ -23,7 +23,7 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  console.log(user)
+  // console.log(user)
 
   return (
 <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">

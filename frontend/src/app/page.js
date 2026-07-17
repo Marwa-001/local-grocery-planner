@@ -4,15 +4,15 @@ import Link from "next/link";
 import { useShoppingStore } from "@/store/useShoppingStore";
 
 export default function Home() {
-  const { user, lists, products, favourites, fetchLists, fetchProducts, fetchFavourites } =
+  const { user, lists, favourites, fetchLists, fetchFavourites } =
     useShoppingStore();
 
   useEffect(() => {
     if (!user) return;
     fetchLists();
-    fetchProducts();
+    // fetchProducts();
     fetchFavourites();
-  }, [user, fetchLists, fetchProducts, fetchFavourites]);
+  }, [user, fetchLists, fetchFavourites]);
 
   const totalItemsToBuy = lists.reduce((acc, list) => acc + (list.items?.length || 0), 0);
   const favoriteCount = favourites.length;

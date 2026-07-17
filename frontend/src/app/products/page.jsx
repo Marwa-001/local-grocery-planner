@@ -3,19 +3,24 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useShoppingStore } from "@/store/useShoppingStore";
 import ProductForm from "@/components/products/ProductForm";
+import { fetchCategories, addCategory, deleteCategory, updateCategory } from "../queries/CategoriesQuery";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { id } from "zod/locales";
+import { fetchProducts, deleteProduct } from "../queries/ProductsQuery";
 
 export default function ProductsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient()
   const {
     user,
-    categories,
-    fetchCategories,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    products,
-    fetchProducts,
-    deleteProduct,
+    // categories,
+    // fetchCategories,
+    // addCategory,
+    // updateCategory,
+    // deleteCategory,
+    // products,
+    // fetchProducts,
+    // deleteProduct,
     toggleFavourite,
     favourites,
     fetchFavourites,
@@ -34,37 +39,95 @@ export default function ProductsPage() {
       }, 300);
       return () => clearTimeout(t);
     }
-    fetchCategories();
-    fetchProducts();
+    // fetchCategories();
+    // fetchProducts();
     fetchFavourites();
-  }, [user, fetchCategories, fetchProducts, fetchFavourites, router]);
+  }, [user, fetchFavourites, router]);
 
-  const handleAddCategory = async (e) => {
-    e.preventDefault();
-    const name = e.target.catName.value;
-    if (!name) return;
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+  })
 
-    const result = await addCategory(name);
-    if (!result.success) {
-      setCatError(result.message || "Could not add category");
-    } else {
-      setCatError("");
-      e.target.reset();
+  const { data: productsData = [], isLoading: isLoadingProducts, isError: isErrorProducts } = useQuery({
+  queryKey: ['products'],
+  queryFn: fetchProducts,
+});
+
+  const addCategoryMutation = useMutation({
+    mutationFn: (id) => addCategory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+    },
+
+    onError: (error) => {
+      console.error("Mutation failed details:", error);
+      alert(error.message || "An unexpected error occurred.");
     }
-  };
+  })
 
+  const deleteCategoryMutation = useMutation({
+    mutationFn: (id)=> deleteCategory(id),
+    onSuccess: ()=>{
+      queryClient.invalidateQueries({queryKey: ['categories']})
+    }
+  })
+
+  const updateCategoryMutation = useMutation({
+    mutationFn: ({ id, name }) => updateCategory(id, { name }),
+    onSuccess:()=>{
+      queryClient.invalidateQueries({queryKey:['categories']})
+    }
+  })
+
+  // console.log(data)
+  
+  const handleAddCategory = async (e) => {
+    e.preventDefault()
+    const form = e.target
+    const name = e.target.catName.value
+    console.log("adding")
+    addCategoryMutation.mutate(name, {
+      onSuccess: () => {
+        form.reset()
+      }
+    })
+    console.log('Added')
+    // e.target.value("")
+  };
+  
+  const handleDeleteCategory = (id)=>{
+    deleteCategoryMutation.mutate(id)
+  }
+  
   const startEditingCategory = (cat) => {
     setEditingCatId(cat.id);
     setEditCatName(cat.name);
   };
-
-  const saveCategoryEdit = async () => {
-    if (editCatName.trim()) {
-      await updateCategory(editingCatId, { name: editCatName.trim() });
-    }
+  
+  const saveCategoryEdit = async (id) => {
+    updateCategoryMutation.mutate({ id, name: editCatName });
     setEditingCatId(null);
   };
 
+
+  // products handlers
+  const deleteProductMutation = useMutation({
+    mutationFn: deleteProduct,
+    onSuccess:()=>{
+      queryClient.invalidateQueries({queryKey:['products']})
+    }
+  })
+
+  const handleDeleteProduct=(id)=>{
+    deleteProductMutation.mutate(id)
+  }
+
+  if (isLoading || isLoadingProducts) return <div>Loading...</div>;
+
+  // Handle error state
+  if (isError || isErrorProducts) return <div>Loading failed.</div>;
+  
   return (
     <div className="min-h-screen bg-[#FBFBFB] text-slate-900 font-sans antialiased pb-20">
       <div className="max-w-xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -111,8 +174,8 @@ export default function ProductsPage() {
 
         {/* Category & Product List */}
         <div className="space-y-12">
-          {categories.map((category) => {
-            const catItems = products.filter(p => p.categoryId === category.id);
+          {data?.map((category) => {
+            const catItems = productsData?.filter(p => p.categoryId === category.id);
             const isEditing = editingCatId === category.id;
 
             return (
@@ -125,16 +188,16 @@ export default function ProductsPage() {
                         <input
                           autoFocus
                           className="bg-transparent border-b-2 border-indigo-500 outline-none text-xl sm:text-2xl font-bold text-slate-900 w-full"
-                          value={editCatName}
+                          value={editCatName?? ''}
                           onChange={(e) => setEditCatName(e.target.value)}
-                          onBlur={saveCategoryEdit}
-                          onKeyDown={(e) => e.key === 'Enter' && saveCategoryEdit()}
+                          onBlur={()=>saveCategoryEdit(category.id)}
+                          onKeyDown={(e) => e.key === 'Enter' && saveCategoryEdit(category.id)}
                         />
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
                         <h3 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">
-                          {category.name}
+                          {category.category_name}
                         </h3>
                         {/* Always visible on mobile, visible on hover for desktop — admin only */}
                         {user?.isAdmin && (
@@ -146,7 +209,7 @@ export default function ProductsPage() {
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>
                             </button>
                             <button
-                              onClick={() => { if(confirm('Delete this category?')) deleteCategory(category.id) }}
+                              onClick={() => { if (confirm('Delete this category?')) handleDeleteCategory(category.id) }}
                               className="p-1.5 text-slate-400 hover:text-red-500 bg-slate-50 sm:bg-transparent rounded-lg"
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
@@ -157,13 +220,13 @@ export default function ProductsPage() {
                     )}
                   </div>
                   <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-3 py-1 rounded-full uppercase shrink-0">
-                    {catItems.length} Items
+                    {catItems?.length} Items
                   </span>
                 </div>
 
                 {/* Items List for this category */}
                 <div className="grid gap-3">
-                  {catItems.map((p) => {
+                  {catItems?.map((p) => {
                     const isFavourite = favourites.some(f => f.productId === p.id);
                     return (
                       <div key={p.id} className="group/item flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 hover:border-indigo-100 transition-all hover:shadow-lg hover:shadow-indigo-500/5">
@@ -180,14 +243,14 @@ export default function ProductsPage() {
                           {user?.isAdmin && (
                             <>
                               <button onClick={() => setEditingProduct(p)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-indigo-600">✎</button>
-                              <button onClick={() => deleteProduct(p.id)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-slate-400 hover:text-red-500">✕</button>
+                              <button onClick={() => handleDeleteProduct(p.id)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-slate-400 hover:text-red-500">✕</button>
                             </>
                           )}
                         </div>
                       </div>
                     );
                   })}
-                  {catItems.length === 0 && (
+                  {catItems?.length === 0 && (
                     <div className="p-8 border-2 border-dashed border-slate-100 rounded-2xl text-center">
                       <p className="text-slate-300 text-xs font-bold uppercase tracking-widest">No products in this category</p>
                     </div>
@@ -198,23 +261,23 @@ export default function ProductsPage() {
           })}
 
           {/* Uncategorized Items Section */}
-          {products.some(p => !p.categoryId) && (
-             <div className="animate-in fade-in duration-500">
-                <h3 className="text-xl sm:text-2xl font-bold text-slate-400 mb-5 px-1 italic">Uncategorized</h3>
-                <div className="grid gap-3">
-                  {products.filter(p => !p.categoryId).map((p) => (
-                    <div key={p.id} className="group/item flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 transition-all">
-                       <div className="truncate">
-                          <h4 className="font-bold text-slate-800 text-base truncate">{p.name}</h4>
-                          <p className="text-indigo-500 text-xs font-bold mt-0.5">${p.price?.toFixed(2) || "0.00"}</p>
-                       </div>
-                       {user?.isAdmin && (
-                         <button onClick={() => setEditingProduct(p)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400">✎</button>
-                       )}
+          {productsData?.some(p => !p.categoryId) && (
+            <div className="animate-in fade-in duration-500">
+              <h3 className="text-xl sm:text-2xl font-bold text-slate-400 mb-5 px-1 italic">Uncategorized</h3>
+              <div className="grid gap-3">
+                {productsData?.filter(p => !p.categoryId).map((p) => (
+                  <div key={p.id} className="group/item flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 transition-all">
+                    <div className="truncate">
+                      <h4 className="font-bold text-slate-800 text-base truncate">{p.name}</h4>
+                      <p className="text-indigo-500 text-xs font-bold mt-0.5">${p.price?.toFixed(2) || "0.00"}</p>
                     </div>
-                  ))}
-                </div>
-             </div>
+                    {user?.isAdmin && (
+                      <button onClick={() => setEditingProduct(p)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400">✎</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

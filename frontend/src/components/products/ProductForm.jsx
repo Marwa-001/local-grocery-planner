@@ -1,11 +1,34 @@
 "use client";
 import { useState } from "react";
-import { useShoppingStore } from "@/store/useShoppingStore";
+// import { useShoppingStore } from "@/store/useShoppingStore";
 import { productSchema } from "@/lib/schemas";
+import { fetchCategories } from '@/app/queries/CategoriesQuery'
+import { QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { updateProduct, addProduct } from "@/app/queries/ProductsQuery";
 
 export default function ProductForm({ productToEdit, clearEdit }) {
-  const { addProduct, categories, updateProduct } = useShoppingStore();
+  // const { addProduct, updateProduct } = useShoppingStore();
   const [error, setError] = useState("");
+  const queryClient = useQueryClient()
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories
+  })
+
+  const AddProductMutation = useMutation({
+    mutationFn: addProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+    }
+  })
+
+  const updateProductMutation = useMutation({
+    mutationFn: updateProduct,
+    onSuccess:()=>{
+      queryClient.invalidateQueries({queryKey:['products']})
+    }
+  })
+
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -30,23 +53,23 @@ export default function ProductForm({ productToEdit, clearEdit }) {
       return;
     }
 
-    if (productToEdit) {
-      const res = await updateProduct(result.data);
-      if (!res.success) {
-        setError(res.message || "Could not update product");
-        return;
+    try {
+      if (productToEdit) {
+        await updateProductMutation.mutateAsync(result.data); // see note below
+        clearEdit();
+      } else {
+        await AddProductMutation.mutateAsync(raw);
       }
-      clearEdit();
-    } else {
-      const res = await addProduct(raw);
-      if (!res.success) {
-        setError(res.message || "Product already exists in catalog!");
-        return;
-      }
+      setError("");
+      e.target.reset();
+    } catch (err) {
+      setError(err.message || "Could not save product");
     }
-    setError("");
-    e.target.reset();
   }
+  if (isLoading) return <div>Loading categories...</div>;
+
+  // Handle error state
+  if (isError) return <div>Failed to load categories.</div>;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -86,16 +109,16 @@ export default function ProductForm({ productToEdit, clearEdit }) {
           <label className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 ml-1">
             Category
           </label>
-          <div className="relative">
+          <div className="relative h-auto">
             <select
               name="categoryId"
               defaultValue={productToEdit?.categoryId || ""}
               className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 transition-all text-slate-800 appearance-none shadow-sm cursor-pointer"
             >
               <option value="">Uncategorized</option>
-              {categories.map((cat) => (
+              {data?.map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.name}
+                  {cat.category_name}
                 </option>
               ))}
             </select>
